@@ -117,9 +117,10 @@ data/ reports/             generated (git-ignored)
 - **AI triages, humans resolve.** The assistant never closes a break — it
   classifies and drafts; resolution stays a human decision.
 
-See [`docs/`](docs/) for the process flow, runbook, control matrix and the
-AI-driven operational implementation framework. Full design rationale is in
-[`BUILD_SPEC.md`](BUILD_SPEC.md).
+See [`docs/`](docs/) for a plain-language guide ([`GUIDE.md`](docs/GUIDE.md) —
+glossary, data, queries and logic explained simply), the process flow, runbook,
+control matrix and the AI-driven operational implementation framework. Full
+design rationale is in [`BUILD_SPEC.md`](BUILD_SPEC.md).
 
 ---
 *PoolDesk is an independent learning simulation. It is not affiliated with, and
