@@ -326,10 +326,12 @@ def export_for_powerbi() -> Path:
         "recon_exception": "SELECT * FROM recon_exception",
         "dq_result": "SELECT * FROM dq_result",
         "fact_trade": "SELECT * FROM fact_trade",
-        # Dimensions so a CSV-only Power BI model can resolve names/types.
+        # Dimensions so a CSV-only Power BI model can resolve names/types
+        # and filter every fact by a shared date.
         "dim_pool": "SELECT * FROM dim_pool",
         "dim_client": "SELECT * FROM dim_client",
         "dim_security": "SELECT * FROM dim_security",
+        "dim_date": "SELECT * FROM dim_date",
     }
     for name, query in exports.items():
         db.query(query).to_csv(out / f"{name}.csv", index=False)
