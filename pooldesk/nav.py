@@ -90,18 +90,21 @@ def compute_nav(run_date: date) -> pd.DataFrame:
             rate = fx.get(sec_ccy.get(r.security_id, "USD"), 1.0)
             gross += r.quantity * price * rate
 
-        # Day one has no prior NAV — fall back to the gross value as fee base.
+        # Round the components first so the stored identity
+        # nav = gross - liabilities holds exactly. Day one has no prior NAV —
+        # fall back to the gross value as the fee base.
+        gross = round(gross, 2)
         fee_base = prior_nav.get(p.pool_id, gross)
-        liabilities = fee_base * p.mgmt_fee_bps / 10_000 / 365
-        nav = gross - liabilities
+        liabilities = round(fee_base * p.mgmt_fee_bps / 10_000 / 365, 2)
+        nav = round(gross - liabilities, 2)
         outstanding = units.get(p.pool_id, 0.0)
         unit_price = nav / outstanding if outstanding else 0.0
         rows.append({
             "nav_date": diso,
             "pool_id": p.pool_id,
-            "gross_asset_value_cad": round(gross, 2),
-            "liabilities_cad": round(liabilities, 2),
-            "nav_cad": round(nav, 2),
+            "gross_asset_value_cad": gross,
+            "liabilities_cad": liabilities,
+            "nav_cad": nav,
             "units_outstanding": round(outstanding, 4),
             "unit_price": round(unit_price, 6),
         })
