@@ -24,8 +24,8 @@ import time
 from datetime import date
 
 import config
-from pooldesk import (ai_assistant, data_generator, data_quality, db, ingest,
-                      nav, reconcile, reporting)
+from pooldesk import (ai_assistant, data_generator, data_quality, dashboard,
+                      db, ingest, nav, reconcile, reporting)
 
 
 def _setup_logging() -> logging.Logger:
@@ -132,6 +132,7 @@ def cmd_run_all(log: logging.Logger) -> None:
     log.info("=== run-all complete: %d day(s) in %.1fs | %d break(s) | "
              "avg DQ %.1f ===", len(days), elapsed, total_breaks, avg_dq)
     reporting.export_for_powerbi()        # refresh CSVs for Power BI / Excel
+    dashboard.build_dashboard()           # refresh the HTML dashboard
 
 
 def cmd_report(log: logging.Logger, run_date: date) -> None:
@@ -165,6 +166,7 @@ def main(argv: list[str] | None = None) -> None:
     sub.add_parser("run-all", help="run every business day")
     sub.add_parser("export", help="export analytical tables to CSV "
                                   "(Power BI / Excel)")
+    sub.add_parser("dashboard", help="rebuild the HTML dashboard")
     rep_p = sub.add_parser("report", help="rebuild a day's reports")
     rep_p.add_argument("--date", required=True, help="YYYY-MM-DD")
     roll_p = sub.add_parser("rollup", help="build a weekly/monthly roll-up")
@@ -184,6 +186,8 @@ def main(argv: list[str] | None = None) -> None:
         cmd_run_all(log)
     elif args.command == "export":
         reporting.export_for_powerbi()
+    elif args.command == "dashboard":
+        dashboard.build_dashboard()
     elif args.command == "report":
         cmd_report(log, date.fromisoformat(args.date))
     elif args.command == "rollup":

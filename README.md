@@ -23,7 +23,8 @@ manager that pools client money into asset-class funds. Each business day it:
 5. **Triages exceptions with AI** — root cause, owner team, priority and a
    drafted resolution note (Claude API, with a deterministic fallback).
 6. **Reports** — a seven-tab Excel ops pack, a one-page PDF, weekly/monthly
-   roll-ups, and CSV extracts for Power BI.
+   roll-ups, CSV extracts for Power BI, and an auto-generated Power BI-style
+   HTML dashboard (`reports/dashboard.html`).
 
 A Power Automate flow then distributes the pack and escalates HIGH-severity
 breaks. See [`docs/process_flow.md`](docs/process_flow.md) for the full flow.
@@ -65,8 +66,9 @@ classifier, and market data is generated offline. Set `ANTHROPIC_API_KEY` in
 `.env` to enable the live LLM triage path, or `MARKET_DATA_MODE=live` for real
 prices via yfinance.
 
-Other commands: `run --date YYYY-MM-DD`, `report --date ...`,
-`rollup --week ... / --month ...`, `export`.
+`run-all` also writes `reports/dashboard.html` — a self-contained Power BI-style
+dashboard that opens in any browser. Other commands: `run --date YYYY-MM-DD`,
+`report --date ...`, `rollup --week ... / --month ...`, `export`, `dashboard`.
 
 ## What it demonstrates
 
