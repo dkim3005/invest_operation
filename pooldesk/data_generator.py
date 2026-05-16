@@ -56,11 +56,11 @@ class _Context:
     clean_prices: dict[str, dict[str, float]]   # date_iso -> {sec_id: price}
     price_panel: pd.DataFrame
     fx_panel: pd.DataFrame
-    fx_map: dict[tuple[str, str], float]        # (date_iso, ccy) -> rate to CAD
+    fx_dropped: dict[str, bool]                  # date_iso -> USD FX row dropped?
+    effective_usd: dict[str, float]              # date_iso -> USD->CAD rate used
     rng_trade: np.random.Generator = field(repr=False)
     rng_price: np.random.Generator = field(repr=False)
     rng_cust: np.random.Generator = field(repr=False)
-    rng_fx: np.random.Generator = field(repr=False)
 
 
 # ── business-day helpers ────────────────────────────────────────────────────
@@ -83,10 +83,14 @@ def _sub_business_days(d: date, n: int) -> date:
 
 
 def _fx_to_cad(ctx: _Context, day_iso: str, ccy: str) -> float:
-    """USD/CAD for the day, carrying forward if that day's rate is absent."""
-    if ccy == "CAD":
+    """USD/CAD for the day — the effective rate, carried forward on FX gaps.
+
+    Using the effective rate (rather than a hidden panel rate) means every
+    cash figure the generator writes is reproducible from the feed it writes.
+    """
+    if ccy == config.BASE_CURRENCY:
         return 1.0
-    return ctx.fx_map.get((day_iso, ccy), 1.35)
+    return ctx.effective_usd[day_iso]
 
 
 # ── issue injection ─────────────────────────────────────────────────────────
@@ -130,8 +134,12 @@ def inject_custodian_breaks(internal: pd.DataFrame, pool_ids: list[str],
     n = len(cust)
 
     for i in _pick(rng, n, CUST_QTY_MISMATCH_RATE):
+        # Factor is kept clearly off 1.0 so every injected break is
+        # unambiguously material and detectable by the reconciliation engine.
+        factor = (rng.uniform(0.80, 0.95) if rng.random() < 0.5
+                  else rng.uniform(1.05, 1.20))
         cust.at[i, "quantity"] = round(
-            float(cust.at[i, "quantity"]) * float(rng.uniform(0.85, 1.15)), 2)
+            float(cust.at[i, "quantity"]) * float(factor), 2)
 
     cust = cust.drop(index=_pick(rng, n, CUST_MISSING_RATE)).reset_index(drop=True)
 
@@ -243,7 +251,7 @@ def generate_day(day: date, ctx: _Context, state: DayState) -> DayState:
     market_prices = inject_price_issues(prices_today, ctx.rng_price)
 
     fx_today = ctx.fx_panel[ctx.fx_panel.rate_date == day_iso].copy()
-    if ctx.rng_fx.random() < FX_DROP_RATE:                 # injected FX gap
+    if ctx.fx_dropped[day_iso]:                            # injected FX gap
         fx_today = fx_today[fx_today.from_ccy != "USD"]
 
     cash = _build_cash_ledger(day, ctx, internal, trades, clean, state.cash)
@@ -332,8 +340,22 @@ def _build_context(seed: int) -> tuple[_Context, list[date]]:
     clean_prices: dict[str, dict[str, float]] = {}
     for row in price_panel.itertuples(index=False):
         clean_prices.setdefault(row.price_date, {})[row.security_id] = row.price
-    fx_map = {(r.rate_date, r.from_ccy): r.rate
-              for r in fx_panel.itertuples(index=False)}
+
+    # Decide FX-gap days up front, then resolve the effective USD/CAD rate for
+    # every day — carrying the last known rate forward across a gap so the
+    # cash ledger only ever uses rates reproducible from the feed itself.
+    panel_usd = {r.rate_date: r.rate for r in fx_panel.itertuples(index=False)
+                 if r.from_ccy == "USD"}
+    rng_fx = np.random.default_rng(seed + 5)
+    fx_dropped: dict[str, bool] = {}
+    effective_usd: dict[str, float] = {}
+    last_usd = 1.35
+    for d in days:
+        di = d.isoformat()
+        fx_dropped[di] = bool(rng_fx.random() < FX_DROP_RATE)
+        if not fx_dropped[di]:
+            last_usd = panel_usd[di]
+        effective_usd[di] = last_usd
 
     ctx = _Context(
         securities=securities,
@@ -344,11 +366,11 @@ def _build_context(seed: int) -> tuple[_Context, list[date]]:
         clean_prices=clean_prices,
         price_panel=price_panel,
         fx_panel=fx_panel,
-        fx_map=fx_map,
+        fx_dropped=fx_dropped,
+        effective_usd=effective_usd,
         rng_trade=np.random.default_rng(seed + 2),
         rng_price=np.random.default_rng(seed + 3),
         rng_cust=np.random.default_rng(seed + 4),
-        rng_fx=np.random.default_rng(seed + 5),
     )
     return ctx, days
 
