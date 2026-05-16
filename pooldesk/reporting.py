@@ -3,7 +3,7 @@
 Turns the day's processed data into the artefacts an operations team actually
 circulates:
 
-* a daily Excel ops pack (six tabs, formatted, with break/trade highlighting)
+* a daily Excel ops pack (seven tabs, formatted, with break/trade highlighting)
 * a daily one-page PDF summary with a NAV-trend chart
 * weekly and monthly roll-ups
 
@@ -22,7 +22,7 @@ from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
 
 import config
-from pooldesk import data_quality, db, nav
+from pooldesk import data_quality, db, nav, reconcile
 
 # ── styling constants ───────────────────────────────────────────────────────
 _TITLE_FONT = Font(bold=True, size=13, color="1F4E78")
@@ -143,6 +143,9 @@ def build_daily_excel(run_date: date) -> Path:
         navdf = navdf.merge(nav.daily_pnl(run_date)[["pool_id",
                             "daily_pnl_cad"]], on="pool_id", how="left")
     _df_sheet(wb, "NAV by Pool", navdf)
+
+    _df_sheet(wb, "Cash Reconciliation", reconcile.reconcile_cash(run_date),
+              highlight_col="status", high_values=("BREAK",))
 
     _df_sheet(wb, "Client Holdings", db.query(
         "SELECT h.client_id, c.client_name, h.pool_id, h.units_held, "
