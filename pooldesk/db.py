@@ -48,3 +48,31 @@ def table_exists(name: str, db_path: Path | None = None) -> bool:
         db_path,
     )
     return not rows.empty
+
+
+def insert_dataframe(conn: sqlite3.Connection, table: str,
+                     df: pd.DataFrame) -> int:
+    """Insert a DataFrame into a table using the caller's connection.
+
+    Uses ``executemany`` so the insert participates in the caller's
+    transaction — unlike ``DataFrame.to_sql``, which commits the connection
+    itself and would break multi-table atomicity. Returns rows inserted.
+    """
+    if df.empty:
+        return 0
+    cols = list(df.columns)
+    sql = (f"INSERT INTO {table} ({','.join(cols)}) "
+           f"VALUES ({','.join(['?'] * len(cols))})")
+    rows = []
+    for row in df.itertuples(index=False, name=None):
+        rec = []
+        for value in row:
+            if pd.isna(value):
+                rec.append(None)
+            elif hasattr(value, "item"):   # numpy scalar -> python scalar
+                rec.append(value.item())
+            else:
+                rec.append(value)
+        rows.append(tuple(rec))
+    conn.executemany(sql, rows)
+    return len(rows)
