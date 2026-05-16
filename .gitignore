@@ -1,0 +1,19 @@
+# Secrets
+.env
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+
+# Generated artifacts (reproducible via the data generator — see README)
+data/
+reports/
+*.db
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
