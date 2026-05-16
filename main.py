@@ -119,6 +119,7 @@ def cmd_run_all(log: logging.Logger) -> None:
     avg_dq = sum(r["dq_score"] for r in results) / len(results)
     log.info("=== run-all complete: %d day(s) in %.1fs | %d break(s) | "
              "avg DQ %.1f ===", len(days), elapsed, total_breaks, avg_dq)
+    reporting.export_for_powerbi()        # refresh CSVs for Power BI / Excel
 
 
 def cmd_report(log: logging.Logger, run_date: date) -> None:
@@ -150,6 +151,8 @@ def main(argv: list[str] | None = None) -> None:
     run_p = sub.add_parser("run", help="run one business day")
     run_p.add_argument("--date", required=True, help="YYYY-MM-DD")
     sub.add_parser("run-all", help="run every business day")
+    sub.add_parser("export", help="export analytical tables to CSV "
+                                  "(Power BI / Excel)")
     rep_p = sub.add_parser("report", help="rebuild a day's reports")
     rep_p.add_argument("--date", required=True, help="YYYY-MM-DD")
     roll_p = sub.add_parser("rollup", help="build a weekly/monthly roll-up")
@@ -167,6 +170,8 @@ def main(argv: list[str] | None = None) -> None:
         cmd_run(log, date.fromisoformat(args.date))
     elif args.command == "run-all":
         cmd_run_all(log)
+    elif args.command == "export":
+        reporting.export_for_powerbi()
     elif args.command == "report":
         cmd_report(log, date.fromisoformat(args.date))
     elif args.command == "rollup":
