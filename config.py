@@ -71,6 +71,15 @@ def business_days(start: date, n: int) -> list[date]:
     return days
 
 
+def prior_business_day(run_date: date) -> date | None:
+    """The business day immediately before ``run_date`` in the sim window."""
+    days = business_days(SIM_START_DATE, SIM_DAYS)
+    if run_date in days:
+        i = days.index(run_date)
+        return days[i - 1] if i > 0 else None
+    return None
+
+
 def feed_dir(day: date) -> Path:
     """Directory holding the daily feed files for a given business date."""
     return FEEDS_DIR / day.strftime("%Y%m%d")

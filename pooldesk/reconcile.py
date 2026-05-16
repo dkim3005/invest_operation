@@ -63,7 +63,7 @@ def _cost_basis_map(diso: str) -> dict[str, float]:
     return dict(zip(rows.security_id, rows.cost))
 
 
-def _fx_to_cad_map(diso: str) -> dict[str, float]:
+def fx_to_cad_map(diso: str) -> dict[str, float]:
     """Currency -> rate to CAD for the day.
 
     If the day's USD rate is missing (an injected FX gap), the most recent
@@ -101,7 +101,7 @@ def reconcile_positions(run_date: date) -> pd.DataFrame:
         index=False, name=None))
     prices = _price_map(diso)
     cost = _cost_basis_map(diso)
-    fx = _fx_to_cad_map(diso)
+    fx = fx_to_cad_map(diso)
 
     breaks = []
     for r in merged.itertuples(index=False):
@@ -143,7 +143,7 @@ def reconcile_cash(run_date: date) -> pd.DataFrame:
     sec_ccy = dict(db.query(
         "SELECT security_id, currency FROM dim_security").itertuples(
         index=False, name=None))
-    fx = _fx_to_cad_map(diso)
+    fx = fx_to_cad_map(diso)
 
     # Expected trade settlement recomputed independently from SETTLED trades.
     recomputed: dict[str, float] = {}
