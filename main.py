@@ -17,6 +17,7 @@ to the console and to reports/pipeline.log. See BUILD_SPEC.md Module 8.
 from __future__ import annotations
 
 import argparse
+import json
 import logging
 import sys
 import time
@@ -69,13 +70,24 @@ def _run_day(log: logging.Logger, run_date: date) -> dict:
     diso = run_date.isoformat()
     breaks = int(db.query("SELECT COUNT(*) AS n FROM recon_exception "
                           "WHERE run_date=?", (diso,)).n.iloc[0])
+    breaks_high = int(db.query("SELECT COUNT(*) AS n FROM recon_exception "
+                               "WHERE run_date=? AND severity='HIGH'",
+                               (diso,)).n.iloc[0])
     total_nav = float(db.query("SELECT COALESCE(SUM(nav_cad),0) AS s "
                                "FROM fact_nav WHERE nav_date=?",
                                (diso,)).s.iloc[0])
-    log.info("  summary: DQ score %.1f | %d break(s) | NAV CAD %s",
-             scorecard["overall_score"], breaks, format(total_nav, ",.0f"))
-    return {"date": diso, "dq_score": scorecard["overall_score"],
-            "breaks": breaks, "total_nav": total_nav}
+    summary = {"date": diso, "dq_score": scorecard["overall_score"],
+               "breaks": breaks, "breaks_high": breaks_high,
+               "total_nav": round(total_nav, 2)}
+    # Machine-readable status the Power Automate flow reads to decide alerting.
+    status_path = (config.REPORTS_DIR / "daily" /
+                   f"run_status_{run_date:%Y%m%d}.json")
+    status_path.parent.mkdir(parents=True, exist_ok=True)
+    status_path.write_text(json.dumps(summary, indent=2))
+    log.info("  summary: DQ score %.1f | %d break(s) (%d HIGH) | NAV CAD %s",
+             scorecard["overall_score"], breaks, breaks_high,
+             format(total_nav, ",.0f"))
+    return summary
 
 
 def cmd_generate(log: logging.Logger) -> None:
